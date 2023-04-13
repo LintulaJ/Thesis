@@ -2,6 +2,7 @@ from deepxde import deepxde as dde
 import numpy as np
 import tensorflow as tf
 import cmath
+import pandas as pd
 
 dde.config.set_default_float("float64")
 dde.optimizers.config.set_LBFGS_options(maxcor=100, ftol=0, gtol=1e-08, maxiter=20000, maxfun=None, maxls=50)
@@ -118,9 +119,11 @@ equilib_mask = np.logical_and(np.isclose(dt[0][:,0], 0,  atol=tol), np.isclose(d
 equilib_points = init_points[equilib_mask, :]
 
 print(equilib_points)
+equilib_df = pd.DataFrame(equilib_points, columns=["beta", "N", "P", "t"])
 
 J11, J12, J21, J22 = model.predict(equilib_points, J)
 eig_values = np.zeros((len(equilib_points[:,0]), 2), dtype=np.complex_)
+stability =  ["unstable" for i in range((len(equilib_points[:,0])))]
 
 for i in range(len(equilib_points)):
     a = 1
@@ -129,6 +132,11 @@ for i in range(len(equilib_points)):
     eig_values[i, 0] = ((-b + cmath.sqrt(b**2 - 4*a*c)) / (2*a))
     eig_values[i, 1] = ((-b - cmath.sqrt(b**2 - 4*a*c)) / (2*a))
 
+    if (eig_values.real[i, 0] < 0) and (eig_values.real[i, 1] < 0):
+        stability[i] = "stable"
+
+equilib_df["equilibria"] = stability
+equilib_df.to_csv("_RMA_equilib.csv")
 
 zero_real_i = np.logical_or(np.isclose(eig_values.real[:,0], 0, atol=2e-3), np.isnan(eig_values.real[:,0]))
 zero_imag_i = np.logical_or(np.isclose(eig_values.imag[:,0], 0, atol=2e-3), np.isnan(eig_values.imag[:,0]))
